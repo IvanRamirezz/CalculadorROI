@@ -172,13 +172,6 @@ for (let mes = 1; mes <= mesesProyectar; mes++) {
     pacientesActuales *= (1 + crecimientoMensual);
 }
 
-// Mostrar resultados
-document.getElementById('resumenFlujoAcumulado').textContent = 
-    `$${beneficioNeto.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-
-document.getElementById('resumenMesRecuperacion').textContent = 
-    mesRecuperacion > 0 ? `${mesRecuperacion} mes(es)` : 'No se recupera';
-
 
 // ROI sobre inversión total (porcentaje)
 const InversionInicialTotal = costoDispositivo + costosVariables;
@@ -300,7 +293,7 @@ const roiPorcentaje = (beneficioNeto / InversionInicialTotal) * 100;
       actualizarPorcentaje();
   });
 
-    function crearCeldaConFormato(valor, esMoneda = false) {
+function crearCeldaConFormato(valor, esMoneda = false, esFuerte = false) {
     const td = document.createElement('td');
     td.className = 'border px-4 py-2';
 
@@ -312,57 +305,122 @@ const roiPorcentaje = (beneficioNeto / InversionInicialTotal) * 100;
     const span = document.createElement('span');
     span.textContent = contenido;
 
+    if (esFuerte) {
+        span.classList.add('font-bold');
+    }
+
     if (esMoneda && numero < 0) {
-        span.classList.add('text-red-500'); // Aplica el color rojo a todo el texto dentro del span
+        span.classList.add('text-red-500'); // rojo si es negativo
     }
 
     td.appendChild(span);
     return td;
+}
+
+
+function generarTablaResultados(mesRecuperacion) {
+  const precioSesion = parseValor('precioSesion');
+  const sesionesCliente = parseValor('sesionesCliente');
+  const pacientesIniciales = parseValor('pacientesTotales');
+  const pacientesCandidatosIniciales = parseValor('pacientesCandidatos');
+  const crecimientoMensual = parseValor('crecimientoMensual') / 100;
+  const mesesProyectar = parseValor('mesesProyectar');
+  const inversionTotal = parseValor('costoDispositivo') + parseValor('subtotalCostos') + (parseValor('inversionCampania') * mesesSeleccionados.size) + (parseValor('subtotalFijos') * mesesSeleccionados.size);
+
+  let tablaBody = document.getElementById('tablaResultados');
+  tablaBody.innerHTML = '';
+
+  let pacientes = pacientesIniciales;
+  let acumulado = 0;
+
+  // Acumuladores por año
+  let subtotales = {
+    1: { ingresos: 0, fijos: 0, marketing: 0, inversion: 0, beneficio: 0 },
+    2: { ingresos: 0, fijos: 0, marketing: 0, inversion: 0, beneficio: 0 }
+  };
+
+  for (let mes = 1; mes <= mesesProyectar; mes++) {
+    const candidatos = pacientesCandidatosIniciales * (pacientes / pacientesIniciales);
+    const sesiones = Math.round(candidatos) * sesionesCliente;
+    const ingresos = sesiones * precioSesion;
+    const costoFijoMensual = parseValor('subtotalFijos');
+    const marketingMensual = mesesSeleccionados.has(mes) ? parseValor('inversionCampania') : 0;
+    const inversionInicial = (mes === 1) ? parseValor('costoDispositivo') + parseValor('subtotalCostos') : 0;
+    const beneficio = ingresos - costoFijoMensual - marketingMensual - inversionInicial;
+    acumulado += beneficio;
+
+    const row = document.createElement('tr');
+    // Cambiar la condición para sombrear la fila
+    if (acumulado >= 0 && acumulado - beneficio < 0) {
+      row.classList.add('bg-green-200'); // Sombreado verde para indicar recuperación
     }
 
-    function generarTablaResultados() {
-    const precioSesion = parseValor('precioSesion');
-    const sesionesCliente = parseValor('sesionesCliente');
-    const pacientesIniciales = parseValor('pacientesTotales'); // o el ID correcto del input
-    const pacientesCandidatosIniciales = parseValor('pacientesCandidatos');
-    const crecimientoMensual = parseValor('crecimientoMensual') / 100;
-    const mesesProyectar = parseValor('mesesProyectar');
-    const inversionTotal = parseValor('costoDispositivo') + parseValor('subtotalCostos') + (parseValor('inversionCampania') * mesesSeleccionados.size) + (parseValor('subtotalFijos') * mesesSeleccionados.size);
+    row.appendChild(crearCeldaConFormato(mes));
+    row.appendChild(crearCeldaConFormato(pacientes.toFixed(0)));
+    row.appendChild(crearCeldaConFormato(candidatos.toFixed(0)));
+    row.appendChild(crearCeldaConFormato(sesiones.toFixed(0)));
+    row.appendChild(crearCeldaConFormato(ingresos, true));
+    row.appendChild(crearCeldaConFormato(costoFijoMensual, true));
+    row.appendChild(crearCeldaConFormato(marketingMensual, true));
+    row.appendChild(crearCeldaConFormato(inversionInicial, true));
+    row.appendChild(crearCeldaConFormato(beneficio, true));
+    row.appendChild(crearCeldaConFormato(acumulado, true));
 
-    let tablaBody = document.getElementById('tablaResultados');
-    tablaBody.innerHTML = '';
+    tablaBody.appendChild(row);
 
-    let pacientes = pacientesIniciales;
-    let acumulado = 0;
-
-    for (let mes = 1; mes <= mesesProyectar; mes++) {
-      const candidatos = pacientesCandidatosIniciales * (pacientes / pacientesIniciales);
-      const sesiones = Math.round(candidatos) * sesionesCliente;
-      const ingresos = sesiones * precioSesion;
-      const costoFijoMensual = parseValor('subtotalFijos');
-      const marketingMensual = mesesSeleccionados.has(mes) ? parseValor('inversionCampania') : 0;
-      const inversionInicial = (mes === 1) ? parseValor('costoDispositivo') + parseValor('subtotalCostos') : 0;
-      const beneficio = ingresos - costoFijoMensual - marketingMensual - inversionInicial;
-      acumulado += beneficio;
-
-        const row = document.createElement('tr');
-        row.appendChild(crearCeldaConFormato(mes));
-        row.appendChild(crearCeldaConFormato(pacientes.toFixed(0)));
-        row.appendChild(crearCeldaConFormato(candidatos.toFixed(0)));
-        row.appendChild(crearCeldaConFormato(sesiones.toFixed(0)));
-        row.appendChild(crearCeldaConFormato(ingresos, true));
-        row.appendChild(crearCeldaConFormato(costoFijoMensual, true));
-        row.appendChild(crearCeldaConFormato(marketingMensual, true));
-        row.appendChild(crearCeldaConFormato(inversionInicial, true));
-        row.appendChild(crearCeldaConFormato(beneficio, true));
-        row.appendChild(crearCeldaConFormato(acumulado, true));
-
-      tablaBody.appendChild(row);
-
-      pacientes *= (1 + crecimientoMensual);
-    }
-
+    const año = (mes <= 12) ? 1 : 2;
+    subtotales[año].ingresos += ingresos;
+    subtotales[año].fijos += costoFijoMensual;
+    subtotales[año].marketing += marketingMensual;
+    subtotales[año].inversion += inversionInicial;
+    subtotales[año].beneficio += beneficio;
+    
+    pacientes *= (1 + crecimientoMensual);
   }
+
+  // Agregar filas de subtotales
+const crearFilaResumen = (titulo, datos, fondo = '', textoFuerte = false) => {
+  const fila = document.createElement('tr');
+  if (fondo) fila.classList.add(fondo);
+
+  const celdaTitulo = document.createElement('td');
+  celdaTitulo.colSpan = 4;
+  celdaTitulo.textContent = titulo;
+  if (textoFuerte) celdaTitulo.classList.add('font-bold');
+  fila.appendChild(celdaTitulo);
+
+  fila.appendChild(crearCeldaConFormato(datos.ingresos, true, textoFuerte));
+  fila.appendChild(crearCeldaConFormato(datos.fijos, true, textoFuerte));
+  fila.appendChild(crearCeldaConFormato(datos.marketing, true, textoFuerte));
+  fila.appendChild(crearCeldaConFormato(datos.inversion, true, textoFuerte));
+  fila.appendChild(crearCeldaConFormato(datos.beneficio, true, textoFuerte));
+
+  if ('acumulado' in datos) {
+    fila.appendChild(crearCeldaConFormato(datos.acumulado, true, textoFuerte));
+  } else {
+    fila.appendChild(crearCeldaConFormato('', false)); // para mantener columnas alineadas
+  }
+
+  tablaBody.appendChild(fila);
+};
+
+
+  crearFilaResumen('Subtotal Año 1', subtotales[1], 'bg-gray-100');
+  crearFilaResumen('Subtotal Año 2', subtotales[2], 'bg-gray-100');
+
+const totales = {
+  ingresos: subtotales[1].ingresos + subtotales[2].ingresos,
+  fijos: subtotales[1].fijos + subtotales[2].fijos,
+  marketing: subtotales[1].marketing + subtotales[2].marketing,
+  inversion: subtotales[1].inversion + subtotales[2].inversion,
+  beneficio: subtotales[1].beneficio + subtotales[2].beneficio,
+  acumulado: acumulado  // 👈 aquí agregas el flujo acumulado total
+};
+
+
+  crearFilaResumen(`Total Periodo (${mesesProyectar} meses)`, totales, 'bg-blue-100', true);
+}
+
 
   // Añadir llamada a generarTablaResultados al final del cálculo principal
   const originalCalcular = calcularInversionTotal;
