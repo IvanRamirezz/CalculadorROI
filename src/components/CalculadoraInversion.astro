@@ -1,0 +1,555 @@
+---
+
+---
+
+<!-- Script principal del módulo -->
+<script type="module">
+  // Función auxiliar para obtener y convertir el valor numérico de un input (quita comas y convierte a número)
+  function parseValor(id) {
+    return parseFloat(document.getElementById(id).value.replace(/,/g, '')) || 0;
+  }
+
+  // Conjunto que almacena los meses seleccionados por el usuario
+  let mesesSeleccionados = new Set();
+
+  // Genera los botones del 1 al 12 para representar los meses del año
+  function generarBotonesMeses() {
+    const container = document.getElementById('mesesContainer');
+    container.innerHTML = ''; // Limpia el contenedor antes de insertar nuevos botones
+    for (let i = 1; i <= 12; i++) {
+      const btn = document.createElement('button');
+      btn.textContent = `Mes ${i}`; // Texto del botón
+      btn.dataset.mes = i; // Asigna el número del mes como atributo
+      btn.type = "button";
+      btn.className = "mes-btn px-4 py-2 border border-gray-300 rounded hover:bg-blue-100";
+      // Evento de clic para seleccionar o deseleccionar un mes
+      btn.addEventListener('click', () => {
+        if (mesesSeleccionados.has(i)) {
+          mesesSeleccionados.delete(i); // Quita el mes
+          btn.classList.remove('bg-blue-600', 'text-white'); // Estilo de deseleccionado
+        } else {
+          mesesSeleccionados.add(i); // Agrega el mes
+          btn.classList.add('bg-blue-600', 'text-white'); // Estilo de seleccionado
+        }
+        // Actualizar el total de campañas inmediatamente
+        const inversionCampania = parseValor('inversionCampania');
+        const totalCampanias = inversionCampania * mesesSeleccionados.size;
+        document.getElementById('totalCampanias').textContent = `$${totalCampanias.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        calcularInversionTotal(); // Recalcula la inversión total
+      });
+      container.appendChild(btn); // Agrega el botón al contenedor
+    }
+  }
+
+  // Calcula la inversión total sumando todos los campos relevantes
+  function calcularInversionTotal() {
+    // Validar que todos los campos necesarios estén llenos
+    const camposRequeridos = [
+        { id: 'costoDispositivo', nombre: 'Costo del Dispositivo PRO2' },
+        { id: 'sofa', nombre: 'Costo del Sofá' },
+        { id: 'muebles', nombre: 'Costo de Muebles' },
+        { id: 'adecuaciones', nombre: 'Costo de Adecuaciones' },
+        { id: 'computadora', nombre: 'Costo de Computadora' },
+        { id: 'inversionCampania', nombre: 'Inversión por Campaña' },
+        { id: 'energia', nombre: 'Costo de Energía' },
+        { id: 'internet', nombre: 'Costo de Internet' },
+        { id: 'renta', nombre: 'Costo de Renta' },
+        { id: 'personal', nombre: 'Costo de Personal' },
+        { id: 'pacientesTotales', nombre: 'Número de Pacientes Totales' },
+        { id: 'pacientesCandidatos', nombre: 'Número de Pacientes Candidatos' },
+        { id: 'precioSesion', nombre: 'Precio por Sesión' },
+        { id: 'sesionesCliente', nombre: 'Sesiones por Cliente' }
+    ];
+
+    // Verificar si hay campos vacíos
+    let camposVacios = false;
+    for (const campo of camposRequeridos) {
+        if (!document.getElementById(campo.id).value) {
+            camposVacios = true;
+            break;
+        }
+    }
+
+    // Si hay campos vacíos, no mostrar el resumen
+    if (camposVacios) {
+        document.getElementById('resumenResultados').classList.add('hidden');
+        return;
+    }
+
+    const costoDispositivo = parseValor('costoDispositivo');
+    const sofa = parseValor('sofa');
+    const muebles = parseValor('muebles');
+    const adecuaciones = parseValor('adecuaciones');
+    const computadora = parseValor('computadora');
+    const otros = parseValor('otros');
+    const inversionCampania = parseValor('inversionCampania');
+
+
+
+    const costosVariables = sofa + muebles + adecuaciones + computadora + otros;
+    const totalCampanias = inversionCampania * mesesSeleccionados.size;
+
+    // Actualizar subtotal de costos variables
+    document.getElementById('subtotalCostos').value = costosVariables.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+    // Costos Fijos Mensuales
+    const energia = parseValor('energia');
+    const internet = parseValor('internet');
+    const renta = parseValor('renta');
+    const personal = parseValor('personal');
+    const otrosFijos = parseValor('otrosFijos');
+
+    const costosFijosMensuales = energia + internet + renta + personal + otrosFijos;
+    
+    // Actualizar subtotal de costos fijos mensuales
+    document.getElementById('subtotalFijos').value = costosFijosMensuales.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    
+    // Actualizar total de campañas
+    document.getElementById('totalCampanias').textContent = `$${totalCampanias.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    const totalFijos = costosFijosMensuales * mesesSeleccionados.size;
+
+    // Inversión Total
+    const inversionTotal = costoDispositivo + costosVariables + totalCampanias + totalFijos;
+
+    // Cálculos de ingresos y ROI
+    const precioSesion = parseValor('precioSesion');
+    const sesionesCliente = parseValor('sesionesCliente');
+    const pacientesCandidatos = parseValor('pacientesCandidatos');
+    const crecimientoMensual = parseValor('crecimientoMensual') / 100;
+    const mesesProyectar = parseValor('mesesProyectar');
+
+    // Cálculo de ingresos del primer año
+    let ingresosPrimerAnio = 0;
+    let pacientesCalculo = parseValor('pacientesTotales');
+    const pacientesCandidatosIniciales = parseValor('pacientesCandidatos');
+
+    for (let i = 1; i <= Math.min(12, mesesProyectar); i++) {
+        const candidatos = pacientesCandidatosIniciales * (pacientesCalculo / parseValor('pacientesTotales'));
+        const sesiones = Math.round(candidatos) * sesionesCliente;
+        const ingresos = sesiones * precioSesion;
+        ingresosPrimerAnio += ingresos;
+        pacientesCalculo *= (1 + crecimientoMensual);
+    }
+
+    // Cálculo de ingresos para meses 13-24
+    let ingresosSegundoAnio = 0;
+    if (mesesProyectar > 12) {
+        for (let i = 13; i <= mesesProyectar; i++) {
+            const candidatos = pacientesCandidatosIniciales * (pacientesCalculo / parseValor('pacientesTotales'));
+            const sesiones = Math.round(candidatos) * sesionesCliente;
+            const ingresos = sesiones * precioSesion;
+            ingresosSegundoAnio += ingresos;
+            pacientesCalculo *= (1 + crecimientoMensual);
+        }
+    }
+
+// Cálculo de beneficio neto y mes de recuperación en una sola pasada
+let beneficioNeto = 0;
+let mesRecuperacion = 0;
+let pacientesActuales = parseValor('pacientesTotales');
+const porcentajeCandidatosCalculo = parseValor('pacientesCandidatos') / parseValor('pacientesTotales');
+
+// Bandera para identificar cuándo se recupera la inversión
+let recuperacionDetectada = false;
+
+for (let mes = 1; mes <= mesesProyectar; mes++) {
+    const candidatos = pacientesActuales * porcentajeCandidatosCalculo;
+    const sesiones = Math.round(candidatos) * sesionesCliente;
+    const ingresoMensual = sesiones * precioSesion;
+
+    const marketingMensual = mesesSeleccionados.has(mes) ? inversionCampania : 0;
+    const inversionInicialMensual = (mes === 1) ? (costoDispositivo + costosVariables) : 0;
+
+    const beneficioMensual = ingresoMensual - costosFijosMensuales - marketingMensual - inversionInicialMensual;
+
+    beneficioNeto += beneficioMensual;
+
+    if (!recuperacionDetectada && beneficioNeto >= 0) {
+        mesRecuperacion = mes;
+        recuperacionDetectada = true;
+    }
+
+    pacientesActuales *= (1 + crecimientoMensual);
+}
+
+// Mostrar resultados
+document.getElementById('resumenFlujoAcumulado').textContent = 
+    `$${beneficioNeto.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+document.getElementById('resumenMesRecuperacion').textContent = 
+    mesRecuperacion > 0 ? `${mesRecuperacion} mes(es)` : 'No se recupera';
+
+
+// ROI sobre inversión total (porcentaje)
+const InversionInicialTotal = costoDispositivo + costosVariables;
+const roiPorcentaje = (beneficioNeto / InversionInicialTotal) * 100;
+
+
+
+    // Actualizar valores en el resumen de resultados
+    document.getElementById('resumenDispositivo').textContent = `$${costoDispositivo.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('resumenVariables').textContent = `$${costosVariables.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('resumenInversionInicial').textContent = `$${(costoDispositivo + costosVariables).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    
+    document.getElementById('resumenFijosMensual').textContent = `$${costosFijosMensuales.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('resumenMarketing').textContent = `$${totalCampanias.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('resumenInversionMensual').textContent = `$${(costosFijosMensuales + totalCampanias).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    
+    document.getElementById('resumenMesRecuperacion').textContent = `Mes ${mesRecuperacion}`;
+    document.getElementById('resumenROI').textContent = `${roiPorcentaje.toFixed(1)}%`;
+    
+    document.getElementById('resumenIngresosPrimerAnio').textContent = `$${ingresosPrimerAnio.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('resumenIngresosSegundoAnio').textContent = `$${ingresosSegundoAnio.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    
+    document.getElementById('resumenBeneficioNeto').textContent = `$${beneficioNeto.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('resumenFlujoAcumulado').textContent = `$${beneficioNeto.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+    // Mostrar la sección de resultados
+    document.getElementById('resumenResultados').classList.remove('hidden');
+
+    // Muestra la inversión total en un elemento con id 'inversionTotal', crea si no existe
+    let inversionTotalElem = document.getElementById('inversionTotal');
+    if (!inversionTotalElem) {
+      inversionTotalElem = document.createElement('div');
+      inversionTotalElem.id = 'inversionTotal';
+      inversionTotalElem.className = 'mt-4 font-semibold text-lg text-gray-800 text-center';
+      // Insertarlo justo antes de los botones por ejemplo
+      const containerPrincipal = document.querySelector('section.bg-white.p-8.rounded-xl.shadow-md.w-full.max-w-3xl.mx-auto.mb-12');
+      if(containerPrincipal) containerPrincipal.appendChild(inversionTotalElem);
+    }
+    inversionTotalElem.textContent = `Inversión Total: $${inversionTotal.toFixed(2)}`;
+  }
+
+  // Calcula el porcentaje de pacientes candidatos respecto al total
+  function actualizarPorcentaje() {
+    const total = parseFloat(document.getElementById('pacientesTotales').value) || 0;
+    const candidatos = parseFloat(document.getElementById('pacientesCandidatos').value) || 0;
+    const porcentaje = total > 0 ? (candidatos / total) * 100 : 0;
+    document.getElementById('porcentajeCandidatos').textContent = `${porcentaje.toFixed(1)}%`;
+  }
+
+  // Limpia todos los campos de entrada y resetea el formulario
+  function limpiarCampos() {
+    document.querySelectorAll('input').forEach(input => {
+      if (input.type === 'text' || input.type === 'number') {
+        input.value = '';
+      }
+    });
+    // Reinicia los valores visuales
+    document.getElementById('totalCampanias').textContent = "$0.00";
+    const inversionTotalElem = document.getElementById('inversionTotal');
+    if (inversionTotalElem) inversionTotalElem.textContent = "Inversión Total: $0.00";
+    document.getElementById('subtotalCostos').value = "0.00";
+    document.getElementById('subtotalFijos').value = "0.00";
+    document.getElementById('porcentajeCandidatos').textContent = "0.0%";
+
+    // Quita selección de meses
+    mesesSeleccionados.clear();
+    document.querySelectorAll('.mes-btn').forEach(btn => {
+      btn.classList.remove('bg-blue-600', 'text-white');
+    });
+  }
+
+  // Lógica que se ejecuta una vez cargado todo el DOM
+  window.addEventListener('DOMContentLoaded', () => {
+      // Agregar event listeners para todos los inputs que afectan los cálculos
+      const inputsVariables = ['sofa', 'muebles', 'adecuaciones', 'computadora', 'otros'];
+      const inputsFijos = ['energia', 'internet', 'renta', 'personal', 'otrosFijos'];
+      
+      // Event listeners para costos variables
+      inputsVariables.forEach(id => {
+          document.getElementById(id).addEventListener('input', () => {
+              const total = inputsVariables.reduce((sum, currentId) => sum + parseValor(currentId), 0);
+              document.getElementById('subtotalCostos').value = total.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+              calcularInversionTotal();
+          });
+      });
+  
+      // Event listeners para costos fijos
+      inputsFijos.forEach(id => {
+          document.getElementById(id).addEventListener('input', () => {
+              const total = inputsFijos.reduce((sum, currentId) => sum + parseValor(currentId), 0);
+              document.getElementById('subtotalFijos').value = total.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+              calcularInversionTotal();
+          });
+      });
+  
+      // Event listener para inversión por campaña
+      document.getElementById('inversionCampania').addEventListener('input', () => {
+          const inversionCampania = parseValor('inversionCampania');
+          const totalCampanias = inversionCampania * mesesSeleccionados.size;
+          document.getElementById('totalCampanias').textContent = `$${totalCampanias.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+          calcularInversionTotal();
+      });
+  
+      // Event listeners para campos que afectan el ROI
+      ['costoDispositivo', 'precioSesion', 'sesionesCliente', 'pacientesCandidatos', 'crecimientoMensual', 'mesesProyectar'].forEach(id => {
+          document.getElementById(id).addEventListener('input', calcularInversionTotal);
+      });
+  
+      // Calcula el porcentaje de pacientes candidatos en tiempo real
+      document.getElementById('pacientesTotales').addEventListener('input', actualizarPorcentaje);
+      document.getElementById('pacientesCandidatos').addEventListener('input', actualizarPorcentaje);
+  
+      // Botón para limpiar los campos
+      document.getElementById('limpiarBtn').addEventListener('click', limpiarCampos);
+  
+      // Inicializa botones de meses y cálculos iniciales
+      generarBotonesMeses();
+      calcularInversionTotal();
+      actualizarPorcentaje();
+  });
+
+    function crearCeldaConFormato(valor, esMoneda = false) {
+    const td = document.createElement('td');
+    td.className = 'border px-4 py-2';
+
+    let numero = parseFloat(valor);
+    const contenido = esMoneda
+        ? `$${numero.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`
+        : valor;
+
+    const span = document.createElement('span');
+    span.textContent = contenido;
+
+    if (esMoneda && numero < 0) {
+        span.classList.add('text-red-500'); // Aplica el color rojo a todo el texto dentro del span
+    }
+
+    td.appendChild(span);
+    return td;
+    }
+
+    function generarTablaResultados() {
+    const precioSesion = parseValor('precioSesion');
+    const sesionesCliente = parseValor('sesionesCliente');
+    const pacientesIniciales = parseValor('pacientesTotales'); // o el ID correcto del input
+    const pacientesCandidatosIniciales = parseValor('pacientesCandidatos');
+    const crecimientoMensual = parseValor('crecimientoMensual') / 100;
+    const mesesProyectar = parseValor('mesesProyectar');
+    const inversionTotal = parseValor('costoDispositivo') + parseValor('subtotalCostos') + (parseValor('inversionCampania') * mesesSeleccionados.size) + (parseValor('subtotalFijos') * mesesSeleccionados.size);
+
+    let tablaBody = document.getElementById('tablaResultados');
+    tablaBody.innerHTML = '';
+
+    let pacientes = pacientesIniciales;
+    let acumulado = 0;
+
+    for (let mes = 1; mes <= mesesProyectar; mes++) {
+      const candidatos = pacientesCandidatosIniciales * (pacientes / pacientesIniciales);
+      const sesiones = Math.round(candidatos) * sesionesCliente;
+      const ingresos = sesiones * precioSesion;
+      const costoFijoMensual = parseValor('subtotalFijos');
+      const marketingMensual = mesesSeleccionados.has(mes) ? parseValor('inversionCampania') : 0;
+      const inversionInicial = (mes === 1) ? parseValor('costoDispositivo') + parseValor('subtotalCostos') : 0;
+      const beneficio = ingresos - costoFijoMensual - marketingMensual - inversionInicial;
+      acumulado += beneficio;
+
+        const row = document.createElement('tr');
+        row.appendChild(crearCeldaConFormato(mes));
+        row.appendChild(crearCeldaConFormato(pacientes.toFixed(0)));
+        row.appendChild(crearCeldaConFormato(candidatos.toFixed(0)));
+        row.appendChild(crearCeldaConFormato(sesiones.toFixed(0)));
+        row.appendChild(crearCeldaConFormato(ingresos, true));
+        row.appendChild(crearCeldaConFormato(costoFijoMensual, true));
+        row.appendChild(crearCeldaConFormato(marketingMensual, true));
+        row.appendChild(crearCeldaConFormato(inversionInicial, true));
+        row.appendChild(crearCeldaConFormato(beneficio, true));
+        row.appendChild(crearCeldaConFormato(acumulado, true));
+
+      tablaBody.appendChild(row);
+
+      pacientes *= (1 + crecimientoMensual);
+    }
+
+  }
+
+  // Añadir llamada a generarTablaResultados al final del cálculo principal
+  const originalCalcular = calcularInversionTotal;
+  calcularInversionTotal = function () {
+    originalCalcular();
+    generarTablaResultados();
+  }
+
+  document.getElementById('descargarExcel').addEventListener('click', () => {
+  const tabla = document.querySelector('#tablaResultados').parentNode; // incluye thead
+  const wb = XLSX.utils.table_to_book(tabla, { sheet: "Resultados Financieros" });
+  XLSX.writeFile(wb, 'proyeccion_financiera.xlsx');
+});
+
+</script>
+
+
+<!-- Contenedor principal para los parámetros de inversión -->
+<section class="bg-white p-8 rounded-xl shadow-md w-full max-w-3xl">    
+  <h2 class="text-2xl font-semibold text-gray-800 mb-6">Parámetros de Inversión</h2>
+
+  <!-- Campo para ingresar el costo del dispositivo principal (ej. un equipo TMS) -->
+  <div class="mb-6">
+    <label class="block text-gray-700 font-medium mb-2">Costo del Dispositivo PRO2</label>
+    <div class="flex items-center">
+      <span class="px-4 py-2 bg-white border border-gray-300 rounded-l-lg text-gray-700">$</span>
+      <input id="costoDispositivo" type="text" value="340000" class="w-full px-4 py-2 border border-gray-300 rounded-r-lg" />
+    </div>
+  </div>
+
+  <!-- Subtítulo para los costos variables únicos -->
+  <h3 class="text-xl font-semibold text-gray-700 mb-2">Costos Variables (Inversión Única)</h3>
+  <div class="grid grid-cols-2 gap-4 mb-4">
+    <div><label>Sofá</label><input id="sofa" type="text" value="8000" class="w-full px-2 py-1 border border-gray-300 rounded" /></div>
+    <div><label>Muebles</label><input id="muebles" type="text" value="12000" class="w-full px-2 py-1 border border-gray-300 rounded" /></div>
+    <div><label>Adecuaciones</label><input id="adecuaciones" type="text" value="15000" class="w-full px-2 py-1 border border-gray-300 rounded" /></div>
+    <div><label>Computadora</label><input id="computadora" type="text" value="20000" class="w-full px-2 py-1 border border-gray-300 rounded" /></div>
+    <div><label>Otros Costos Variables</label><input id="otros" type="text" value="5000" class="w-full px-2 py-1 border border-gray-300 rounded" /></div>
+  </div>
+
+  <div class="mb-6">
+    <label>Subtotal Costos Variables</label>
+    <input id="subtotalCostos" type="text" readonly class="w-full px-4 py-2 border border-gray-300 bg-gray-100 rounded" />
+  </div>
+
+  <section class="bg-blue-50 p-6 rounded-xl shadow-md w-full max-w-3xl mt-8">
+    <h2 class="text-2xl font-semibold text-blue-800 mb-4">Campaña de Marketing</h2>
+    <div class="mb-4">
+      <label class="block text-gray-700 font-medium mb-2">Inversión por Campaña</label>
+      <div class="flex items-center">
+        <span class="px-4 py-2 bg-white border border-gray-300 rounded-l-lg text-gray-700">$</span>
+        <input id="inversionCampania" type="text" value="10000" class="w-full px-4 py-2 border border-gray-300 rounded-r-lg" />
+      </div>
+    </div>
+    <div class="mb-4">
+      <label class="block text-gray-700 font-medium mb-2">Meses para Realizar Campañas</label>
+      <div id="mesesContainer" class="grid grid-cols-6 gap-2"></div>
+    </div>
+    <p class="text-blue-700 mt-2 text-sm">Selecciona los meses en los que deseas realizar campañas de marketing. El costo se aplicará en cada mes seleccionado.</p>
+    <div class="mt-4">
+      <label class="block text-gray-700 font-medium mb-1">Total Campañas:</label>
+      <div id="totalCampanias" class="text-xl font-semibold text-blue-800">$0.00</div>
+    </div>
+  </section>
+
+  <section class="bg-blue-50 p-6 rounded-xl shadow-md w-full max-w-3xl mt-8">
+    <h2 class="text-2xl font-semibold text-blue-800 mb-4">Costos Fijos Mensuales</h2>
+    <div class="grid grid-cols-3 gap-4 mb-4">
+      <div><label>Energía Eléctrica</label><input id="energia" type="text" value="2500" class="w-full px-4 py-2 border border-gray-300 rounded" /></div>
+      <div><label>Internet</label><input id="internet" type="text" value="1200" class="w-full px-4 py-2 border border-gray-300 rounded" /></div>
+      <div><label>Renta del Local</label><input id="renta" type="text" value="15000" class="w-full px-4 py-2 border border-gray-300 rounded" /></div>
+      <div><label>Personal de Apoyo</label><input id="personal" type="text" value="20000" class="w-full px-4 py-2 border border-gray-300 rounded" /></div>
+      <div><label>Otros Costos Fijos</label><input id="otrosFijos" type="text" value="1300" class="w-full px-4 py-2 border border-gray-300 rounded" /></div>
+    </div>
+    <div>
+      <label class="block text-gray-700 font-medium mb-1">Subtotal Costos Fijos Mensuales</label>
+      <input id="subtotalFijos" readonly class="w-full px-4 py-2 border border-gray-300 bg-gray-100 rounded font-semibold" />
+    </div>
+  </section>
+
+  <section class="bg-white p-6 rounded-xl shadow-md w-full max-w-3xl mt-8">
+    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Parámetros de Crecimiento</h2>
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <div><label>Pacientes Totales</label><input id="pacientesTotales" type="number" value="30" class="w-full px-4 py-2 border border-gray-300 rounded" /></div>
+      <div><label>Número de Pacientes Candidatos a TMS</label><input id="pacientesCandidatos" type="number" value="6" class="w-full px-4 py-2 border border-gray-300 rounded" /></div>
+    </div>
+    <div class="mb-4 bg-blue-100 p-4 rounded text-blue-800 font-semibold">% de Pacientes Candidatos a TMS: <span id="porcentajeCandidatos">20.0%</span></div>
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <div><label>Tasa de Crecimiento Mensual (%)</label><input id="crecimientoMensual" type="number" value="5" class="w-full px-4 py-2 border border-gray-300 rounded" /></div>
+      <div><label>Meses a Proyectar</label><input id="mesesProyectar" type="number" value="24" class="w-full px-4 py-2 border border-gray-300 rounded" /></div>
+    </div>
+  </section>
+
+  <section class="bg-white p-6 rounded-xl shadow-md w-full max-w-3xl mt-8">
+    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Precios y Sesiones</h2>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label>Precio por Sesión TMS</label>
+        <div class="flex items-center">
+          <span class="px-4 py-2 bg-white border border-gray-300 rounded-l-lg text-gray-700">$</span>
+          <input id="precioSesion" type="number" value="1500" class="w-full px-4 py-2 border border-gray-300 rounded-r-lg" />
+        </div>
+      </div>
+      <div>
+        <label>Sesiones por Cliente</label>
+        <input id="sesionesCliente" type="number" value="10" class="w-full px-4 py-2 border border-gray-300 rounded" />
+      </div>
+    </div>
+  </section>
+
+  <div class="flex gap-4 justify-center mt-8">
+    <button id="calcularBtn" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Calcular ROI</button>
+    <button id="limpiarBtn" class="bg-gray-300 text-gray-800 px-6 py-2 rounded hover:bg-gray-400">Limpiar Campos</button>
+  </div>
+
+  <!-- Sección final: Resumen de Resultados -->
+  <section id="resumenResultados" class="bg-white p-8 rounded-xl shadow-md w-full max-w-3xl mt-8 hidden">
+      <h2 class="text-2xl font-semibold mb-6 text-gray-800">Resumen de Resultados</h2>
+      
+      <!-- Primera fila: Inversión Inicial y Mensual -->
+      <div class="grid grid-cols-2 gap-6 mb-6">
+        <!-- Inversión Inicial -->
+        <div class="bg-gray-50 p-5 rounded-md shadow">
+          <h3 class="text-lg font-semibold mb-3 text-gray-700">Inversión Inicial</h3>
+          <p class="mb-2">Dispositivo PRO2<br><span id="resumenDispositivo" class="text-blue-600 font-bold text-lg">$0.00</span></p>
+          <p class="mb-2">Costos Variables (Única vez)<br><span id="resumenVariables" class="text-blue-600 font-bold text-lg">$0.00</span></p>
+          <hr class="my-2">
+          <p>Inversión Inicial Total<br><span id="resumenInversionInicial" class="text-blue-700 font-bold text-lg">$0.00</span></p>
+        </div>
+      
+        <!-- Inversión Mensual -->
+        <div class="bg-blue-50 p-5 rounded-md shadow">
+          <h3 class="text-lg font-semibold mb-3 text-gray-700">Inversión Mensual</h3>
+          <p class="mb-2">Costos Fijos Mensuales<br><span id="resumenFijosMensual" class="text-blue-600 font-bold text-lg">$0.00</span></p>
+          <p class="mb-2">Campañas de Marketing<br><span id="resumenMarketing" class="text-blue-600 font-bold text-lg">$0.00</span></p>
+          <hr class="my-2">
+          <p>Total Inversión Mensual<br><span id="resumenInversionMensual" class="text-blue-700 font-bold text-lg">$0.00</span></p>
+        </div>
+      </div>
+      
+      <!-- Segunda fila: Recuperación, Ingresos y Beneficio -->
+      <div class="grid grid-cols-3 gap-6">
+        <!-- Recuperación -->
+        <div class="bg-gray-50 p-5 rounded-md shadow">
+          <h3 class="text-lg font-semibold mb-3 text-gray-700">Recuperación</h3>
+          <p class="mb-2">Mes de Recuperación<br><span id="resumenMesRecuperacion" class="text-blue-700 font-bold text-lg">Mes 0</span></p>
+          <p>ROI al Final del Periodo<br><span id="resumenROI" class="text-blue-700 font-bold text-lg">0.0%</span></p>
+        </div>
+      
+        <!-- Ingresos Proyectados -->
+        <div class="bg-blue-50 p-5 rounded-md shadow">
+          <h3 class="text-lg font-semibold mb-3 text-gray-700">Ingresos Proyectados</h3>
+          <p class="mb-2">Total Primer Año<br><span id="resumenIngresosPrimerAnio" class="text-blue-600 font-bold text-lg">$0.00</span></p>
+          <p>Meses 13 a 24<br><span id="resumenIngresosSegundoAnio" class="text-blue-600 font-bold text-lg">$0.00</span></p>
+        </div>
+      
+        <!-- Beneficio Neto -->
+        <div class="bg-gray-50 p-5 rounded-md shadow">
+          <h3 class="text-lg font-semibold mb-3 text-gray-700">Beneficio Neto</h3>
+          <p class="mb-2">Beneficio Neto Total<br><span id="resumenBeneficioNeto" class="text-blue-700 font-bold text-lg">$0.00</span></p>
+          <p>Flujo Acumulado al Final<br><span id="resumenFlujoAcumulado" class="text-blue-700 font-bold text-lg">$0.00</span></p>
+        </div>
+      </div>
+  </section>
+
+  <!-- Tabla de resultados financieros -->
+    <div id="tablaResultadosContainer" class="overflow-x-auto mt-8">
+    <table class="min-w-full bg-white text-center border border-gray-300">
+        <thead class="bg-gray-100">
+        <tr>
+            <th class="px-4 py-2 border">Mes</th>
+            <th class="px-4 py-2 border">Pacientes Totales</th>
+            <th class="px-4 py-2 border">Candidatos TMS</th>
+            <th class="px-4 py-2 border">Sesiones</th>
+            <th class="px-4 py-2 border">Ingresos</th>
+            <th class="px-4 py-2 border">Costos Fijos</th>
+            <th class="px-4 py-2 border">Marketing</th>
+            <th class="px-4 py-2 border">Inversión Inicial</th>
+            <th class="px-4 py-2 border">Beneficio Mensual</th>
+            <th class="px-4 py-2 border">Flujo Acumulado</th>
+        </tr>
+        </thead>
+        <tbody id="tablaResultados"></tbody>
+    </table>
+    </div>
+    <button id="descargarExcel" class="mt-4 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+  Descargar Excel
+    </button>
+
+</section>
